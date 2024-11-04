@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第五小组用户观看视频数据分析</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h1>第五小组用户观看视频数据分析</h1>
+    <button onclick="loadData()">加载数据</button>
+    <div id="stats"></div>
+    <table id="data-table">
+        <thead>
+            <tr>
+                <th>用户IP</th>
+                <th>视频ID</th>
+                <th>视频标题</th>
+                <th>观看时长</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    async function loadData() {
+        const tableBody = document.querySelector("#data-table tbody");
+        tableBody.innerHTML = "";
+        const statsDiv = document.getElementById("stats");
+        statsDiv.innerHTML = ""; // 清空统计信息
+
+        try {
+            const response = await fetch('http://localhost:8080/find', {
+                method: "GET"
+            });
+            if (!response.ok) {
+                throw new Error('网络响应不正确');
+            }
+
+            const data = await response.json();
+            console.log(data);
+
+            data.data.forEach(item => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                <td>${item.ip || 'N/A'}</td>
+                <td>${item.videoId || 'N/A'}</td>
+                <td>${item.title || 'N/A'}</td>
+                <td>${formatDuration(item.watchTime) || 'N/A'}</td>
+            `;
+                tableBody.appendChild(row);
+            });
+
+        } catch (error) {
+            console.error('获取数据时出错:', error);
+            statsDiv.innerHTML = `<p style="color: red;">加载数据时发生错误: ${error.message}</p>`;
+        }
+    }
+
+
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+</script>
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(to right, #e0f7fa, #ffffff);
+        color: #333;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        flex-direction: column;
+        transition: background 0.5s ease;
+    }
+    .container {
+        max-width: 900px;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+        color: #00796b;
+        margin-bottom: 20px;
+        font-size: 2.5em;
+    }
+    button {
+        background-color: #00796b;
+        color: white;
+        border: none;
+        padding: 15px;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: background-color 0.3s, transform 0.2s;
+        width: 100%;
+        font-size: 18px;
+        margin-top: 15px;
+    }
+    button:hover {
+        background-color: #004d40;
+        transform: translateY(-2px);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        transition: transform 0.3s;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #b2dfdb;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    tr:hover {
+        background-color: #e0f2f1;
+    }
+    #stats {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #e7f3fe;
+        border-left: 5px solid #2196F3;
+        text-align: left;
+        transition: all 0.3s ease;
+    }
+</style>
+
+</body>
+</html>

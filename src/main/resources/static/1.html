@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第五小组用户地理位置数据分析</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #ffffff);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            transition: background 0.5s ease;
+        }
+        .container {
+            max-width: 900px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #00796b;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s;
+            width: 100%;
+            font-size: 18px;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #004d40;
+            transform: translateY(-2px);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            transition: transform 0.3s;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #b2dfdb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        tr:hover {
+            background-color: #e0f2f1;
+        }
+        #stats {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #e7f3fe;
+            border-left: 5px solid #2196F3;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        #map {
+            width: 60%;
+            height: 400px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        #chart {
+            width: 35%;
+            height: 400px;
+            margin-top: 20px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>第五小组用户地理位置数据分析</h1>
+    <button onclick="loadData()">加载数据</button>
+    <div id="stats"></div>
+    <table id="data-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>用户IP</th>
+            <th>记录时间</th>
+            <th>天干地支</th>
+            <th>经度</th>
+            <th>纬度</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <div class="chart-container">
+        <div id="map"></div>
+        <div id="chart"></div>
+    </div>
+</div>
+<script src="https://cdn.bootcdn.net/ajax/libs/axios/1.2.0/axios.min.js"></script>
+
+<script>
+    async function loadData() {
+        const tableBody = document.querySelector("#data-table tbody");
+        tableBody.innerHTML = "";
+        const statsDiv = document.getElementById("stats");
+        statsDiv.innerHTML = ""; // 清空统计信息
+        const mapDiv = document.getElementById("map");
+        const myChart = echarts.init(mapDiv);
+        myChart.clear(); // 清空地图
+
+        const chartDiv = document.getElementById("chart");
+        const myChart2 = echarts.init(chartDiv);
+        myChart2.clear(); // 清空统计图
+
+        try {
+            const response = await fetch('http://localhost:8080/all', {
+                method: "GET"
+            });
+            if (!response.ok) {
+                throw new Error('网络响应不正确');
+            }
+
+            const data = await response.json();
+            console.log(data);
+
+            data.data.forEach(item => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                <td>${item.id || 'N/A'}</td>
+                <td>${item.ip || 'N/A'}</td>
+                <td>${item.colDate || 'N/A'}</td>
+                <td>${item.ganZhi || 'N/A'}</td>
+                <td>${item.longitude || 'N/A'}</td>
+                <td>${item.latitude || 'N/A'}</td>
+            `;
+                tableBody.appendChild(row);
+            });
+
+            analyzeData(data.data, myChart, myChart2);
+
+        } catch (error) {
+            console.error('获取数据时出错:', error);
+            statsDiv.innerHTML = `<p style="color: red;">加载数据时发生错误: ${error.message}</p>`;
+        }
+    }
+
+    function analyzeData(data, myChart, myChart2) {
+        const statsDiv = document.getElementById("stats");
+
+        const uniqueIPs = new Set(data.map(item => item.ip)); // 获取唯一的IP地址
+        const totalUsers = uniqueIPs.size;
+
+        const sculptureCoord = { longitude: 121.556381, latitude: 31.292485 };
+        const uniqueArea1IPs = new Set(); // 雕塑物周围用户的唯一IP
+        const uniqueArea2IPs = new Set(); // 其他区域用户的唯一IP
+
+        const mapData = data.map(item => ({
+            name: item.ip || 'N/A',
+            value: [item.longitude || 0, item.latitude || 0]
+        }));
+
+        data.forEach(item => {
+            if (item.longitude && item.latitude) {
+                const isNearSculpture = (Math.abs(item.longitude - sculptureCoord.longitude) < 0.01) &&
+                    (Math.abs(item.latitude - sculptureCoord.latitude) < 0.01);
+                if (isNearSculpture) {
+                    uniqueArea1IPs.add(item.ip); // 添加唯一IP到雕塑物周围的集合
+                } else {
+                    uniqueArea2IPs.add(item.ip); // 添加唯一IP到其他区域的集合
+                }
+            }
+        });
+
+        const area1Count = uniqueArea1IPs.size; // 雕塑物周围用户数
+        const area2Count = uniqueArea2IPs.size; // 其他区域用户数
+
+        statsDiv.innerHTML = `
+        <h3>数据统计</h3>
+        <p>当天活跃用户总数: <strong>${totalUsers}</strong></p>
+        <p>毛像物周围用户数: <strong>${area1Count}</strong></p>
+        <p>其他区域用户数: <strong>${area2Count}</strong></p>
+    `;
+
+        // 配置地图选项
+        const option = {
+            title: {
+                text: '用户登录位置分布图',
+                subtext: '数据为模拟数据',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item'
+            },
+            geo: {
+                map: 'china',
+                roam: true,
+                label: {
+                    show: true
+                },
+                emphasis: {
+                    label: {
+                        show: true
+                    }
+                }
+            },
+            series: [
+                {
+                    name: '用户登录位置',
+                    type: 'scatter',
+                    coordinateSystem: 'geo',
+                    data: mapData,
+                    symbolSize: 10,
+                    itemStyle: {
+                        color: '#FF5722'
+                    }
+                }
+            ]
+        };
+
+        // 使用指定的配置项和数据显示图表
+        myChart.setOption(option);
+
+        // 配置饼图选项
+        const pieData = [
+            { value: area1Count, name: '毛像周围用户' },
+            { value: area2Count, name: '其他区域用户' }
+        ];
+
+        const option2 = {
+            title: {
+                text: '用户区域分布',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item'
+            },
+            series: [
+                {
+                    name: '用户区域分布',
+                    type: 'pie',
+                    radius: ['40%', '60%'], // 增大饼图的半径范围
+                    data: pieData,
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }
+            ]
+        };
+
+        // 使用指定的配置项和数据显示饼图
+        myChart2.setOption(option2);
+    }
+</script>
+
+</body>
+</html>

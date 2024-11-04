@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://116.62.44.106:3306/learning_android_game
+    username: root
+    password: SJKhzh920120
+
+server:
+  port: 8080
+
+#toDO
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true

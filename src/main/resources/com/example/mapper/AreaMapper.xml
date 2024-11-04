@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.AreaMapper">
+    <insert id="inserts">
+        insert into time_position ( ip, col_date, gan_zhi, longitude, latitude) values
+        <foreach collection="areas" item="item" open="(" close=")" separator="),(">
+            #{item.ip},#{item.colDate},#{item.ganZhi},#{item.longitude},#{item.latitude}
+        </foreach>
+    </insert>
+</mapper>
